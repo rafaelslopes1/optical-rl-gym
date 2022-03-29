@@ -28,10 +28,14 @@ class Service:
         self.service_class = service_class
         self.best_modulation = best_modulation
         self.number_slots = number_slots
+        self.number_slots_backup = number_slots
         self.route = None
         self.initial_slot = None
-        self.wavelength = None
+        self.backup_route = None
+        self.initial_slot_backup = None
         self.accepted = False
+        self.shared = False
+        self.dpp = False
 
     def __str__(self):
         msg = '{'
