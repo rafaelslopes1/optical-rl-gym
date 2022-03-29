@@ -6,8 +6,38 @@ register(
 )
 
 register(
+    id='RMSADPP-v0',
+    entry_point='optical_rl_gym.envs:RMSADPPEnv',
+)
+
+register(
+    id='RMSASBPP-v0',
+    entry_point='optical_rl_gym.envs:RMSASBPPEnv',
+)
+
+register(
     id='DeepRMSA-v0',
     entry_point='optical_rl_gym.envs:DeepRMSAEnv',
+)
+
+register(
+    id='DeepRMSADPP-v0',
+    entry_point='optical_rl_gym.envs:DeepRMSADPPEnv',
+)
+
+register(
+    id='DeepRMSADPPKSP-v0',
+    entry_point='optical_rl_gym.envs:DeepRMSADPPKSPEnv',
+)
+
+register(
+    id='DeepRMSASBPP-v0',
+    entry_point='optical_rl_gym.envs:DeepRMSASBPPEnv',
+)
+
+register(
+    id='DeepRMSASBPPKSP-v0',
+    entry_point='optical_rl_gym.envs:DeepRMSASBPPKSPEnv',
 )
 
 register(
