@@ -36,21 +36,39 @@ class Path:
 
 @dataclass(repr=False)
 class Service:
-    service_id: int
-    source: str
-    source_id: int
-    destination: Optional[str] = field(default=None)
-    destination_id: Optional[str] = field(default=None)
-    arrival_time: Optional[float] = field(default=None)
-    holding_time: Optional[float] = field(default=None)
-    bit_rate: Optional[float] = field(default=None)
-    path: Optional[Path] = field(default=None)
-    best_modulation: Optional[Modulation] = field(default=None)
-    service_class: Optional[int] = field(default=None)
-    number_slots: Optional[int] = field(default=None)
-    core: Optional[int] = field(default=None)
-    launch_power: Optional[float] = field(default=None)
-    accepted: bool = field(default=False)
+    def __init__(
+        self,
+        service_id, 
+        source, 
+        source_id,
+        destination=None, 
+        destination_id=None, 
+        arrival_time=None,
+        holding_time=None, 
+        bit_rate=None, 
+        best_modulation=None, 
+        service_class=None, 
+        number_slots=None
+    ):
+        self.service_id = service_id
+        self.arrival_time = arrival_time
+        self.holding_time = holding_time
+        self.source = source
+        self.source_id = source_id
+        self.destination = destination
+        self.destination_id = destination_id
+        self.bit_rate = bit_rate
+        self.service_class = service_class
+        self.best_modulation = best_modulation
+        self.number_slots = number_slots
+        self.number_slots_backup = number_slots
+        self.route = None
+        self.initial_slot = None
+        self.backup_route = None
+        self.initial_slot_backup = None
+        self.accepted = False
+        self.shared = False
+        self.dpp = False
 
     def __str__(self):
         msg = "{"
