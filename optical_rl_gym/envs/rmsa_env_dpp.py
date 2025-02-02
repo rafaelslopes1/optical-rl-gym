@@ -52,9 +52,16 @@ class RMSADPPEnv(OpticalNetworkEnv):
         self.failure_counter = 0 
         self.failure_disjointness = 0 
         self.episode_failure_disjointness = 0
+        self.episode_failure_counter = 0
+        self.current_service = None
         self.episode_failure_counter = 0 
         
 
+        self.spectrum_slots_allocation = np.full(
+            (self.topology.number_of_edges(), self.num_spectrum_resources),
+            fill_value=-1,
+            dtype=int,
+        )
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
@@ -72,6 +79,8 @@ class RMSADPPEnv(OpticalNetworkEnv):
                                                 self.num_spectrum_resources + 1),
                                                dtype=int)
         # Double the number space in order to incorporate the working/backup logic
+        self.actions_taken = np.zeros(default_actions_shape, dtype=int)
+        self.episode_actions_taken = np.zeros(default_actions_shape, dtype=int)
         self.actions_taken = np.zeros((self.k_paths + 1,
                                        self.num_spectrum_resources + 1,
                                        self.k_paths + 1,
@@ -145,27 +154,42 @@ class RMSADPPEnv(OpticalNetworkEnv):
                           working_path, initial_slot_working, backup_path, initial_slot_backup] += 1
                       self._add_release(self.service)
 
+                    else:
+                        self.current_service.accepted = False
 
                   else:
                       self.service.accepted = False
 
+                else:
+                    self.current_service.accepted = False
               else:
                   self.service.accepted = False
 
+        else:
+            self.current_service.accepted = False
       else:
           self.service.accepted = False
 
+        if not self.current_service.accepted:
+            self.actions_taken[self.k_paths, self.num_spectrum_resources] += 1
+            self.failure_counter += 1
+            self.episode_failure_counter += 1
       if not self.service.accepted:
           self.actions_taken[self.k_paths, self.num_spectrum_resources] += 1
           self.failure_counter += 1
           self.episode_failure_counter += 1 
           
 
+        self.services_processed += 1
+        self.episode_services_processed += 1
+        self.bit_rate_requested += self.current_service.bit_rate
+        self.episode_bit_rate_requested += self.current_service.bit_rate
       self.services_processed += 1
       self.episode_services_processed += 1
       self.bit_rate_requested += self.service.bit_rate
       self.episode_bit_rate_requested += self.service.bit_rate
 
+        self.topology.graph["services"].append(self.current_service)
       self.topology.graph['services'].append(self.service)
 
       reward = self.reward()
@@ -219,6 +243,11 @@ class RMSADPPEnv(OpticalNetworkEnv):
         self.topology.graph["available_slots"] = np.ones((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                          dtype=int)
 
+        self.spectrum_slots_allocation = np.full(
+            (self.topology.number_of_edges(), self.num_spectrum_resources),
+            fill_value=-1,
+            dtype=int,
+        )
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
@@ -251,6 +280,15 @@ class RMSADPPEnv(OpticalNetworkEnv):
                                                                                initial_slot_backup + number_slots_backup))
 
         self.logger.debug(
+            "%s assigning working path %s on initial slot %s for %s slots and backup path %s on initial slot %s for %s slots",
+            self.current_service.service_id,
+            working_path.node_list,
+            initial_slot_working,
+            number_slots_working,
+            backup_path.node_list,
+            initial_slot_backup,
+            number_slots_backup,
+        )
             '{} assigning working path {} on initial slot {} for {} slots and backup path {} on initial slot {} for {} slots' \
             .format(self.service.service_id, working_path.node_list, initial_slot_working, number_slots_working,
                     backup_path.node_list, initial_slot_backup, number_slots_backup))
@@ -260,6 +298,22 @@ class RMSADPPEnv(OpticalNetworkEnv):
             self.topology[working_path.node_list[i]][working_path.node_list[i + 1]]['index'],
             initial_slot_working:initial_slot_working + number_slots_working] = 0
             self.spectrum_slots_allocation[
+                self.topology[working_path.node_list[i]][working_path.node_list[i + 1]][
+                    "index"
+                ],
+                initial_slot_working : initial_slot_working + number_slots_working,
+            ] = self.current_service.service_id
+            self.topology[working_path.node_list[i]][working_path.node_list[i + 1]][
+                "services"
+            ].append(
+                self.current_service
+            )  # Do we need to do that twice?
+            self.topology[working_path.node_list[i]][working_path.node_list[i + 1]][
+                "running_services"
+            ].append(self.current_service)
+            self._update_link_stats(
+                working_path.node_list[i], working_path.node_list[i + 1]
+            )
             self.topology[working_path.node_list[i]][working_path.node_list[i + 1]]['index'],
             initial_slot_working:initial_slot_working + number_slots_working] = self.service.service_id
             self.topology[working_path.node_list[i]][working_path.node_list[i + 1]]['services'].append(
@@ -273,6 +327,20 @@ class RMSADPPEnv(OpticalNetworkEnv):
             self.topology[backup_path.node_list[i]][backup_path.node_list[i + 1]]['index'],
             initial_slot_backup:initial_slot_backup + number_slots_backup] = 0
             self.spectrum_slots_allocation[
+                self.topology[backup_path.node_list[i]][backup_path.node_list[i + 1]][
+                    "index"
+                ],
+                initial_slot_backup : initial_slot_backup + number_slots_backup,
+            ] = self.current_service.service_id
+            self.topology[backup_path.node_list[i]][backup_path.node_list[i + 1]][
+                "services"
+            ].append(self.current_service)
+            self.topology[backup_path.node_list[i]][backup_path.node_list[i + 1]][
+                "running_services"
+            ].append(self.current_service)
+            self._update_link_stats(
+                backup_path.node_list[i], backup_path.node_list[i + 1]
+            )
             self.topology[backup_path.node_list[i]][backup_path.node_list[i + 1]]['index'],
             initial_slot_backup:initial_slot_backup + number_slots_backup] = self.service.service_id
             self.topology[backup_path.node_list[i]][backup_path.node_list[i + 1]]['services'].append(self.service)
@@ -280,21 +348,26 @@ class RMSADPPEnv(OpticalNetworkEnv):
                 self.service)
             self._update_link_stats(backup_path.node_list[i], backup_path.node_list[i + 1])
 
+        self.topology.graph["running_services"].append(self.current_service)
+        self.current_service.route = working_path
+        self.current_service.initial_slot = initial_slot_working
+        self.current_service.backup_route = backup_path
+        self.current_service.initial_slot_backup = initial_slot_backup
         self.topology.graph['running_services'].append(self.service)
         self.service.route = working_path
         self.service.initial_slot = initial_slot_working
         self.service.backup_route = backup_path
         self.service.initial_slot_backup = initial_slot_backup
 
-        self.service.number_slots = number_slots_working
-        self.service.number_slots_backup = number_slots_backup
+        self.current_service.number_slots = number_slots_working
+        self.current_service.number_slots_backup = number_slots_backup
 
         self._update_network_stats()
         self.services_accepted += 1
         self.episode_services_accepted += 1
 
-        self.bit_rate_provisioned += self.service.bit_rate
-        self.episode_bit_rate_provisioned += self.service.bit_rate
+        self.bit_rate_provisioned += self.current_service.bit_rate
+        self.episode_bit_rate_provisioned += self.current_service.bit_rate
 
     def _release_path(self, service: Service):  # Doubled to take into account backup
         for i in range(len(service.route.node_list) - 1):
@@ -421,6 +494,16 @@ class RMSADPPEnv(OpticalNetworkEnv):
                 self._add_release(service_to_release)  # puts service back in the queue
                 break  # breaks the loop
 
+        self.current_service = Service(
+            self.episode_services_processed,
+            src,
+            src_id,
+            destination=dst,
+            destination_id=dst_id,
+            arrival_time=at,
+            holding_time=ht,
+            bit_rate=bit_rate,
+        )
         self.service = Service(self.episode_services_processed, src, src_id,
                                destination=dst, destination_id=dst_id,
                                arrival_time=at, holding_time=ht, bit_rate=bit_rate)

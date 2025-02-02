@@ -59,12 +59,12 @@ class DeepRMSADPPEnv(RMSADPPEnv):
     def observation(self):
         # observation space defined as in https://github.com/xiaoliangchenUCD/DeepRMSA/blob/eb2f2442acc25574e9efb4104ea245e9e05d9821/DeepRMSA_Agent.py#L384
         source_destination_tau = np.zeros((2, self.topology.number_of_nodes()))
-        min_node = min(self.service.source_id, self.service.destination_id)
-        max_node = max(self.service.source_id, self.service.destination_id)
+        min_node = min(self.current_service.source_id, self.current_service.destination_id)
+        max_node = max(self.current_service.source_id, self.current_service.destination_id)
         source_destination_tau[0, min_node] = 1
         source_destination_tau[1, max_node] = 1
         spectrum_obs = np.full((self.k_paths*2, (2 * self.j + 3)), fill_value=-1.)
-        for idp, path in enumerate(self.k_shortest_paths[self.service.source, self.service.destination]):
+        for idp, path in enumerate(self.k_shortest_paths[self.current_service.source, self.current_service.destination]):
             available_slots = self.get_available_slots(path)
             num_slots = self.get_number_slots(path)
             initial_indices, lengths = self.get_available_blocks(idp)
@@ -86,14 +86,14 @@ class DeepRMSADPPEnv(RMSADPPEnv):
             spectrum_obs[idp, self.j * 2 + 2] = (np.mean(
                 lengths[av_indices]) - 4) / 4  # avg. number of FS blocks available
         bit_rate_obs = np.zeros((1, 1))
-        bit_rate_obs[0, 0] = self.service.bit_rate / 100
+        bit_rate_obs[0, 0] = self.current_service.bit_rate / 100
         
         return np.concatenate((bit_rate_obs, source_destination_tau.reshape((1, np.prod(source_destination_tau.shape))),
                                spectrum_obs.reshape((1, np.prod(spectrum_obs.shape)))), axis=1) \
             .reshape(self.observation_space.shape)
 
     def reward(self):
-        return 1 if self.service.accepted else -1
+        return 1 if self.current_service.accepted else -1
 
     def reset(self, only_counters=True):
         return super().reset(only_counters=only_counters)
@@ -124,7 +124,7 @@ def shortest_path_first_fit(env: DeepRMSADPPEnv) -> int:
 
 
 def shortest_available_path_first_fit(env: DeepRMSADPPEnv) -> int:
-    for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
+    for idp, path in enumerate(env.k_shortest_paths[env.current_service.source, env.current_service.destination]):
         initial_indices, lengths = env.get_available_blocks(idp)
         if len(initial_indices) > 0:  # if there are available slots
             return idp * env.j  # this path uses the first one

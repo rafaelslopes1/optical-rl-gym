@@ -9,3 +9,8 @@ from optical_rl_gym.envs.deeprmsa_env_sbpp import DeepRMSASBPPEnv
 from optical_rl_gym.envs.deeprmsa_env_sbpp_ksp import DeepRMSASBPPKSPEnv
 from optical_rl_gym.envs.qos_constrained_ra import QoSConstrainedRA
 from optical_rl_gym.envs.rmcsa_env import RMCSAEnv
+from optical_rl_gym.envs.rmsa_env_dpp import RMSADPPEnv
+from optical_rl_gym.envs.rmcsa_env_sbpp import RMSCASBPPEnv
+from optical_rl_gym.envs.rmcsa_env_dpp import RMCSADPPEnv
+from optical_rl_gym.envs.rmcsa_env_dpp_dense import RMCSADPPDenseEnv
+from optical_rl_gym.envs.rmcsa_env_dpp_sparse import RMCSADPPSparseEnv

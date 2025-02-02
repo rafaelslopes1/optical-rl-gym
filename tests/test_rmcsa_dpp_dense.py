@@ -3,20 +3,18 @@ import os
 import pickle
 
 import gym
-import matplotlib.pyplot as plt
-import numpy as np
 
-from optical_rl_gym.envs.rmcsa_env import (
-    SimpleMatrixObservation,
+from optical_rl_gym.envs.rmcsa_env_dpp_dense import (
     shortest_available_path_best_modulation_first_core_first_fit,
 )
+from optical_rl_gym.envs.rmcsa_env_dpp_dense import SimpleMatrixObservation
 from optical_rl_gym.utils import evaluate_heuristic, random_policy
 
-load = 250
-logging.getLogger("rmsaenv").setLevel(logging.INFO)
+load = 400
+logging.getLogger("rmsaenv_dpp_dense").setLevel(logging.INFO)
 
-seed = 20
-episodes = 10
+seed = 10
+episodes = 20
 episode_length = 1000
 num_spatial_resources = 7
 worst_xt = -84.7
@@ -24,12 +22,12 @@ worst_xt = -84.7
 monitor_files = []
 policies = []
 
-# topology_name = 'gbn'
-# topology_name = 'nobel-us'
-# topology_name = 'germany50'
 with open(
     os.path.join(
-        "..", "examples", "topologies", "nsfnet_chen_5-paths_6-modulations.h5"
+        "..",
+        "examples",
+        "topologies",
+        "nsfnet_chen_50-paths_6-modulations.h5"
     ),
     "rb",
 ) as f:
@@ -42,32 +40,36 @@ env_args = dict(
     load=load,
     mean_service_holding_time=25,
     episode_length=episode_length,
-    num_spectrum_resources=64,
+    num_spectrum_resources=320,
     num_spatial_resources=num_spatial_resources,
-    worst_xt=worst_xt,
+    # worst_xt=worst_xt,
 )
 
 print("STR".ljust(5), "REW".rjust(7), "STD".rjust(7))
 
-init_env = gym.make("RMCSA-v0", **env_args)
-env_rnd = SimpleMatrixObservation(init_env)
-mean_reward_rnd, std_reward_rnd = evaluate_heuristic(
-    env_rnd, random_policy, n_eval_episodes=episodes
-)
-print("Rnd:".ljust(8), f"{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}")
-print(
-    "\tBit rate blocking:",
-    (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned)
-    / init_env.episode_bit_rate_requested,
-)
-print(
-    "\tRequest blocking:",
-    (init_env.episode_services_processed - init_env.episode_services_accepted)
-    / init_env.episode_services_processed,
-)
-print("Throughput:", init_env.topology.graph["throughput"])
+# init_env = gym.make("RMCSADPPDense-v0", **env_args)
+# env_rnd = SimpleMatrixObservation(init_env)
+# mean_reward_rnd, std_reward_rnd = evaluate_heuristic(
+#     env_rnd, random_policy, n_eval_episodes=episodes
+# )
+# print("Rnd:".ljust(8), f"{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}")
+# print(
+#     "\tBit rate blocking:",
+#     (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned)
+#     / init_env.episode_bit_rate_requested,
+# )
+# print(
+#     "\tRequest blocking:",
+#     (init_env.episode_services_processed - init_env.episode_services_accepted)
+#     / init_env.episode_services_processed,
+# )
+# print("\tFailure:", init_env.failure_counter)
+# print("\tFailure Slots:", init_env.failure_slots)
+# print("\tFailure Disjointness:", init_env.failure_disjointness)
+# print("\tFailure Crosstalk:", init_env.failure_crosstalk)
+# print("Throughput:", init_env.topology.graph["throughput"])
 
-env_sap = gym.make("RMCSA-v0", **env_args)
+env_sap = gym.make("RMCSADPPDense-v0", **env_args)
 mean_reward_sap, std_reward_sap = evaluate_heuristic(
     env_sap,
     shortest_available_path_best_modulation_first_core_first_fit,
@@ -84,6 +86,10 @@ print(
     (env_sap.episode_services_processed - env_sap.episode_services_accepted)
     / env_sap.episode_services_processed,
 )
+print("\tFailure:", env_sap.failure_counter)
+print("\tFailure Slots:", env_sap.failure_slots)
+print("\tFailure Disjointness:", env_sap.failure_disjointness)
+print("\tFailure Crosstalk:", env_sap.failure_crosstalk)
 print("Throughput:", env_sap.topology.graph["throughput"])
 #
 # # Initial Metrics for Environment

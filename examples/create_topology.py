@@ -150,7 +150,7 @@ def get_topology(file_name, topology_name, modulations, k_paths=5):
 if __name__ == "__main__":
     # default values
     k_paths = 5
-    topology_file = "nsfnet_chen.txt"
+    topology_file = "topologies/nsfnet_chen.txt"
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -175,7 +175,7 @@ if __name__ == "__main__":
         args.topology, topology_path.stem.upper(), modulations, args.k_paths
     )
 
-    file_name = topology_path.stem + "_" + str(k_paths) + "-paths"
+    file_name = topology_path.stem + "_" + str(args.k_paths) + "-paths"
     if modulations is not None:
         file_name += "_" + str(len(modulations)) + "-modulations"
     file_name += ".h5"

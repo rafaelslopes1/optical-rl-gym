@@ -54,3 +54,23 @@ register(
     id="RMCSA-v0",
     entry_point="optical_rl_gym.envs:RMCSAEnv",
 )
+
+register(
+    id="RMCSASBPP-v0",
+    entry_point="optical_rl_gym.envs:RMSCASBPPEnv",
+)
+
+register(
+    id="RMCSADPP-v0",
+    entry_point="optical_rl_gym.envs:RMCSADPPEnv",
+)
+
+register(
+    id="RMCSADPPDense-v0",
+    entry_point="optical_rl_gym.envs:RMCSADPPDenseEnv",
+)
+
+register(
+    id="RMCSADPPSparse-v0",
+    entry_point="optical_rl_gym.envs:RMCSADPPSparseEnv",
+)
