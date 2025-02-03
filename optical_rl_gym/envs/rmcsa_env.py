@@ -138,7 +138,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                 self.num_spectrum_resources,
             ),
             fill_value=-1,
-            dtype=np.int,
+            dtype=int,
         )
 
         # do we allow proactive rejection or not?
@@ -479,7 +479,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                 self.num_spectrum_resources,
             ),
             fill_value=-1,
-            dtype=np.int,
+            dtype=int,
         )
 
         self.topology.graph["compactness"] = 0.0
@@ -490,6 +490,7 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         self._new_service = False
         self._next_service()
+
         return self.observation()
 
     def render(self, mode="human"):
@@ -529,10 +530,10 @@ class RMCSAEnv(OpticalNetworkEnv):
             ].append(self.current_service)
             self._update_link_stats(core, path.node_list[i], path.node_list[i + 1])
         self.topology.graph["running_services"].append(self.current_service)
-        self.current_service.path = path
-        self.current_service.initial_slot = initial_slot
-        self.current_service.number_slots = number_slots
-        self.current_service.core = core
+        self.current_service.working_path = path
+        self.current_service.working_initial_slot = initial_slot
+        self.current_service.working_number_slots = number_slots
+        self.current_service.working_core = core
         self._update_network_stats(core)
 
         self.services_accepted += 1
@@ -541,26 +542,26 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.episode_bit_rate_provisioned += self.current_service.bit_rate
 
     def _release_path(self, service: Service):
-        for i in range(len(service.path.node_list) - 1):
+        for i in range(len(service.working_path.node_list) - 1):
             self.topology.graph["available_slots"][
-                service.core,
-                self.topology[service.path.node_list[i]][service.path.node_list[i + 1]][
+                service.working_core,
+                self.topology[service.working_path.node_list[i]][service.working_path.node_list[i + 1]][
                     "index"
                 ],
-                service.initial_slot : service.initial_slot + service.number_slots,
+                service.working_initial_slot : service.working_initial_slot + service.working_number_slots,
             ] = 1
             self.spectrum_slots_allocation[
-                service.core,
-                self.topology[service.path.node_list[i]][service.path.node_list[i + 1]][
+                service.working_core,
+                self.topology[service.working_path.node_list[i]][service.working_path.node_list[i + 1]][
                     "index"
                 ],
-                service.initial_slot : service.initial_slot + service.number_slots,
+                service.working_initial_slot : service.working_initial_slot + service.working_number_slots,
             ] = -1
-            self.topology[service.path.node_list[i]][service.path.node_list[i + 1]][
+            self.topology[service.working_path.node_list[i]][service.working_path.node_list[i + 1]][
                 "running_services"
             ].remove(service)
             self._update_link_stats(
-                service.core, service.path.node_list[i], service.path.node_list[i + 1]
+                service.working_core, service.working_path.node_list[i], service.working_path.node_list[i + 1]
             )
         self.topology.graph["running_services"].remove(service)
 
@@ -732,6 +733,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         )
         self._new_service = True
 
+        # print(f"Service {self.current_service.service_id} created")
+
         # registering statistics about the bit rate requested
         self.bit_rate_requested += self.current_service.bit_rate
         self.episode_bit_rate_requested += self.current_service.bit_rate
@@ -836,7 +839,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         sum_slots_routes = 0  # this accounts for the sum of all Bi * Hi
 
         for service in self.topology.graph["running_services"]:
-            sum_slots_routes += service.number_slots * service.path.hops
+            sum_slots_routes += service.working_number_slots * service.working_path.hops
 
         # this accounts for the sum of used blocks, i.e.,
         # \sum_{j=1}^{M} (\lambda_{max}^j - \lambda_{min}^j)
@@ -941,6 +944,7 @@ class SimpleMatrixObservation(gym.ObservationWrapper):
         source_destination_tau[0, min_node] = 1
         source_destination_tau[1, max_node] = 1
         spectrum_obs = copy.deepcopy(self.topology.graph["available_slots"])
+
         return np.concatenate(
             (
                 source_destination_tau.reshape(

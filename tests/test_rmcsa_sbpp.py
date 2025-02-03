@@ -3,17 +3,18 @@ import os
 import pickle
 
 import gym
-import matplotlib.pyplot as plt
-import numpy as np
 
-from optical_rl_gym.envs.rmcsa_env import (
-    SimpleMatrixObservation,
+# import matplotlib.pyplot as plt
+# import numpy as np
+
+from optical_rl_gym.envs.rmcsa_env_sbpp import (
     shortest_available_path_best_modulation_first_core_first_fit,
 )
+from optical_rl_gym.envs.rmcsa_env_sbpp import SimpleMatrixObservation
 from optical_rl_gym.utils import evaluate_heuristic, random_policy
 
 load = 250
-logging.getLogger("rmsaenv").setLevel(logging.INFO)
+logging.getLogger("rmsaenv_dpp").setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
@@ -44,12 +45,12 @@ env_args = dict(
     episode_length=episode_length,
     num_spectrum_resources=64,
     num_spatial_resources=num_spatial_resources,
-    worst_xt=worst_xt,
+    # worst_xt=worst_xt,
 )
 
 print("STR".ljust(5), "REW".rjust(7), "STD".rjust(7))
 
-init_env = gym.make("RMCSA-v0", **env_args)
+init_env = gym.make("RMCSASBPP-v0", **env_args)
 env_rnd = SimpleMatrixObservation(init_env)
 mean_reward_rnd, std_reward_rnd = evaluate_heuristic(
     env_rnd, random_policy, n_eval_episodes=episodes
@@ -67,7 +68,7 @@ print(
 )
 print("Throughput:", init_env.topology.graph["throughput"])
 
-env_sap = gym.make("RMCSA-v0", **env_args)
+env_sap = gym.make("RMCSASBPP-v0", **env_args)
 mean_reward_sap, std_reward_sap = evaluate_heuristic(
     env_sap,
     shortest_available_path_best_modulation_first_core_first_fit,

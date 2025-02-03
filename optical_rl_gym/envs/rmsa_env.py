@@ -356,8 +356,8 @@ class RMSAEnv(OpticalNetworkEnv):
 
         self._new_service = False
         self._next_service()
-        return self.observation()
 
+        return self.observation()
     def render(self, mode="human"):
         return
 

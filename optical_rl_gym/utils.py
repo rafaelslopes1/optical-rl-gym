@@ -1,13 +1,12 @@
-import typing
 from dataclasses import dataclass, field
 from itertools import islice
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
-import typing
 import networkx as nx
 import numpy as np
 
-if typing.TYPE_CHECKING:
+
+if TYPE_CHECKING:
     from optical_rl_gym.envs.optical_network_env import OpticalNetworkEnv
 
 
@@ -38,17 +37,17 @@ class Path:
 class Service:
     def __init__(
         self,
-        service_id, 
-        source, 
+        service_id,
+        source,
         source_id,
-        destination=None, 
-        destination_id=None, 
+        destination=None,
+        destination_id=None,
         arrival_time=None,
-        holding_time=None, 
-        bit_rate=None, 
-        best_modulation=None, 
-        service_class=None, 
-        number_slots=None
+        holding_time=None,
+        bit_rate=None,
+        best_modulation=None,
+        service_class=None,
+        number_slots=None,
     ):
         self.service_id = service_id
         self.arrival_time = arrival_time
@@ -69,12 +68,40 @@ class Service:
         self.accepted = False
         self.shared = False
         self.dpp = False
+        self.slots_assigned = False
+        self.slots_assigned_backup = False
+        self.is_disjoint = False
+        self.is_crosstalk_acceptable = False
+        self.is_modulation_acceptable = False
+        self.working_path = None
+        self.working_modulation = None
+        self.working_core = None
+        self.working_initial_slot = None
+        self.backup_path = None
+        self.backup_modulation = None
+        self.backup_core = None
 
     def __str__(self):
         msg = "{"
         msg += "" if self.bit_rate is None else f"br: {self.bit_rate}, "
         msg += "" if self.service_class is None else f"cl: {self.service_class}, "
         return f"Serv. {self.service_id} ({self.source} -> {self.destination})" + msg
+
+
+@dataclass
+class RMSCASBPPAction:
+    working_path: int
+    modulation_working: int
+    core_working: int
+    initial_slot_working: int
+    backup_path: int
+    modulation_backup: int
+    core_backup: int
+    initial_slot_backup: int
+    backup_dpp_path: int
+    modulation_backup_dpp: int
+    core_backup_dpp: int
+    initial_slot_backup_dpp: int
 
 
 def start_environment(env: "OpticalNetworkEnv", steps: int) -> "OpticalNetworkEnv":
