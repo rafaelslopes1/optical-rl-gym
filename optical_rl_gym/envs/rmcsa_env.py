@@ -38,7 +38,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         worst_xt=None,
         node_request_probabilities=None,
         bit_rate_selection: str = "continuous",
-        bit_rates: Sequence = [10, 40, 100],
+        bit_rates: Sequence = None,
         bit_rate_probabilities: Optional[np.array] = None,
         bit_rate_lower_bound=25,
         bit_rate_higher_bound=100,
@@ -59,6 +59,9 @@ class RMCSAEnv(OpticalNetworkEnv):
             channel_width=channel_width,
         )
         assert "modulations" in self.topology.graph
+
+        if bit_rates is None:
+            bit_rates = [10, 40, 100]
 
         self.worst_crosstalks_by_core: Dict[int, float] = {
             7: -84.7,
@@ -124,8 +127,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         # Adding a 4db penalty margin as most operators do (4 dB in our case)
         # to both ASE and XT limits values
         # TODO: move this to the method and make a variable here
-        for format in self.modulation_formats:
-            format.inband_xt += 4
+        for modulation_format in self.modulation_formats:
+            modulation_format.inband_xt += 4
         self.worst_xt += 4
 
         self.spectrum_slots_allocation = np.full(
@@ -234,9 +237,12 @@ class RMCSAEnv(OpticalNetworkEnv):
             )
 
             self.logger.debug(
-                "{} processing action {} route {} and initial slot {} for {} slots".format(
-                    self.current_service.service_id, action, path, initial_slot, slots
-                )
+                "%s processing action %s route %s and initial slot %s for %s slots",
+                self.current_service.service_id,
+                action,
+                path,
+                initial_slot,
+                slots,
             )
             if self.is_path_free(
                 self.k_shortest_paths[
@@ -255,7 +261,9 @@ class RMCSAEnv(OpticalNetworkEnv):
                 # Note for future: Wether or not this goes before or after is_path_free
                 # depends on which is faster
                 # Check  that the chosen path length is viable considering crosstalk
-                if self._crosstalk_is_acceptable(self.modulation_formats[modulation], path_length):
+                if self._crosstalk_is_acceptable(
+                    self.modulation_formats[modulation], path_length
+                ):
 
                     # Set the resources that were free to "used"
                     self._provision_path(
@@ -269,7 +277,9 @@ class RMCSAEnv(OpticalNetworkEnv):
                     )
                     # More statistics
                     self.current_service.accepted = True
-                    self.current_service.current_modulation = self.modulation_formats[modulation]
+                    self.current_service.current_modulation = self.modulation_formats[
+                        modulation
+                    ]
                     self.actions_taken[path, modulation, core, initial_slot] += 1
 
                     # Schedule the event for the resources to leave the network
@@ -491,18 +501,15 @@ class RMCSAEnv(OpticalNetworkEnv):
     ):
         if not self.is_path_free(path, core, initial_slot, number_slots):
             raise ValueError(
-                "Route {} has not enough capacity on slots {}-{}".format(
-                    path.node_list, path, initial_slot, initial_slot + number_slots
-                )
+                f"Route {path.node_list} has not enough capacity on slots {initial_slot}-{initial_slot + number_slots}"
             )
 
         self.logger.debug(
-            "{} assigning route {} on initial slot {} for {} slots".format(
-                self.current_service.service_id,
-                path.node_list,
-                initial_slot,
-                number_slots,
-            )
+            "%s assigning route %s on initial slot %s for %s slots",
+            self.current_service.service_id,
+            path.node_list,
+            initial_slot,
+            number_slots,
         )
         for i in range(len(path.node_list) - 1):
             self.topology.graph["available_slots"][
@@ -590,7 +597,6 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.topology.graph["last_update"] = self.current_time
 
     def _update_link_stats(self, core: int, node1: str, node2: str):
-
         """Creates metrics for:
         Individual node "utilization", overall "core_utilization",
         "external fragmentation", and "link_compactness".
@@ -659,7 +665,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                     )
 
                     # evaluate again only the "used part" of the spectrum
-                    internal_idx, internal_values, internal_lengths = RMCSAEnv.rle(
+                    _internal_idx, internal_values, _internal_lengths = RMCSAEnv.rle(
                         slot_allocation[lambda_min:lambda_max]
                     )
                     unused_spectrum_slots = np.sum(1 - internal_values)
@@ -809,6 +815,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         )
         return available_slots
 
+    @staticmethod
     def rle(inarray):
         """run length encoding. Partial credit to R rle function.
         Multi datatype arrays catered for including non Numpy
@@ -857,7 +864,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                 )  # we do not put the "+1" because we use zero-indexed arrays
 
                 # evaluate again only the "used part" of the spectrum
-                internal_idx, internal_values, internal_lengths = RMCSAEnv.rle(
+                _internal_idx, internal_values, _internal_lengths = RMCSAEnv.rle(
                     self.topology.graph["available_slots"][
                         core, self.topology[n1][n2]["index"], lambda_min:lambda_max
                     ]
@@ -894,9 +901,7 @@ def shortest_available_path_best_modulation_first_core_first_fit(env: RMCSAEnv) 
             env.current_service.source, env.current_service.destination
         ]
     ):
-        modulation = get_best_modulation_format(
-                        path.length, env.modulation_formats
-                    )
+        modulation = get_best_modulation_format(path.length, env.modulation_formats)
         num_slots = env.get_number_slots(path, modulation)
         # Iteration of core
         for core in range(env.num_spatial_resources):
@@ -904,7 +909,7 @@ def shortest_available_path_best_modulation_first_core_first_fit(env: RMCSAEnv) 
                 0, env.topology.graph["num_spectrum_resources"] - num_slots
             ):
                 if env.is_path_free(path, core, initial_slot, num_slots):
-                    
+
                     midx = env.modulation_formats.index(modulation)
                     return (idp, midx, core, initial_slot)
     return (
